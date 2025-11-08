@@ -30,7 +30,7 @@ jobs:
       - name: SAM build
         id: build
         run: |
-          sam build --template sam/template.yaml --base-dire ./
+          sam build --template sam/template.yaml --base-dir ./
 
       - name: SAM deploy
         run: |
