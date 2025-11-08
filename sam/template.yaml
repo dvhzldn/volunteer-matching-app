@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: "AWS::Serverless-2016-10-31"
+Description: Secure Volunteer Matching App - Core Infrastructure
+
+Globals:
+  Function:
+    Timeout: 10
+    MemorySize: 256
+
+Resources:
+  MatchingTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-MatchingTable"
+
+      # 1 RCU / 1 WCU to stay within Free Tier
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+          # 1 RCU / 1 WCU to stay within the Free Tier
+          ProvisionedThroughput:
+            ReadCapacityUnits: 1
+            WriteCapacityUnits: 1
+
+  # Lambda Function placeholder
+  GraphQLFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: app.handler
+      Runtime: python3.11
+      CodeUri: backend/
+      Environment:
+        Variables:
+          MATCHING_TABLE_NAME: !Ref MatchingTable
+      Policies:
+        # Policy permitting Lambda function to perform CRUD operations on the DynamoDB
+        - DynamoDBCrudPolicy:
+            TableName: !Ref MatchingTable
+
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /graphql
+            Method: POST
