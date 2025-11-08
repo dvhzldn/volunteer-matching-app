@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Volunteer Matching</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 800px;
+        margin: auto;
+        padding: 20px;
+      }
+      input,
+      button,
+      textarea {
+        padding: 10px;
+        margin: 5px 0;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      pre {
+        background: #eee;
+        padding: 15px;
+        overflow-x: auto;
+        border: 1px solid #ccc;
+      }
+      .section {
+        border: 1px solid #ddd;
+        padding: 15px;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Volunteer Matching</h1>
+
+    <div class="section" id="auth-section">
+      <h2>Authentication (Cognito)</h2>
+      <input type="text" id="username" placeholder="Email/Username" required />
+      <input type="password" id="password" placeholder="Password" required />
+      <button onclick="registerUser()">1. Register user</button>
+      <button onclick="loginUser()">2. Log in</button>
+      <p>Status: <span id="auth-status">Awaiting login...</span></p>
+      <p>
+        Token (for auth header):
+        <textarea id="id-token" rows="3" readonly></textarea>
+      </p>
+    </div>
+
+    <div class="section" id="api-section">
+      <h2>API interaction</h2>
+      <h3>A. Register volunteer</h3>
+      <input
+        type="text"
+        id="reg-name"
+        placeholder="Volunteer name"
+        value="Jane Doe"
+      />
+      <input type="text" id="reg-loc" placeholder="Location" value="London" />
+      <input
+        type="text"
+        id="reg-skills"
+        placeholder="Skills [comma separated]"
+        value="Gardening,Tutor"
+      />
+      <input
+        type="text"
+        id="reg-avail"
+        placeholder="Availability (e.g. weekends)"
+        value="WEEKENDS"
+      />
+      <button onclick="registerVolunteer()">
+        3. Execute registerVolunteer
+      </button>
+
+      <h3>B. Find matches</h3>
+      <input
+        type="text"
+        id="match-skill"
+        placeholder="Skill Required"
+        value="Gardening"
+      />
+      <input type="text" id="match-loc" placeholder="Location" value="London" />
+      <button onclick="findMatches()">4. Find matches</button>
+
+      <h3>API Response</h3>
+      <pre id="api-response">Response here...</pre>
+    </div>
+
+    <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.1/dist/amazon-cognito-identity.min.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

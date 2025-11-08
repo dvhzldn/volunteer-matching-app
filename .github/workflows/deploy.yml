@@ -1,0 +1,51 @@
+name: SAM CI/CD pipeline
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Install dependencies
+        run: |
+          pip install aws-sam-cli
+          pip install -r backend/requirements.txt --target .sam_build/lib
+
+      - name: SAM build
+        id: build
+        run: |
+          sam build --template sam/template.yaml --base-dir backend
+
+      - name: SAM deploy
+        run: |
+          sam deploy --stack-name VolunteerMatchingApp-Dev \
+            --template-file .aws-sam/build/template.yaml \
+            --s3-bucket volunteer-matching-deploy-${{ github.sha }} \
+            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+            --no-fail-on-empty-changeset
+
+      - name: S3 cleanup
+        if: always() # Run even if deployment fails
+        run: |
+          aws s3 rb s3://volunteer-matching-deploy-${{ github.sha }} --force

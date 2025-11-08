@@ -70,3 +70,48 @@ Resources:
           Properties:
             Path: /graphql
             Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  # Cognito pool for auth
+  VolunteerUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: VolunteerAppUserPool
+      # Enforce strong password policies
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      AutoVerifiedAttributes:
+        - email
+
+  VolunteerUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: WebClient
+      UserPoolId: !Ref VolunteerUserPool
+      ExplicitAuthFlows:
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      # Required for static web/mobile clients
+      GenerateSecret: false
+
+  # API Gateway authoriser
+  CognitoAuthorizer:
+    Type: AWS::ApiGateway::Authorizer
+    Properties:
+      RestApiId: !Ref GraphQLApi
+      Name: CognitoAuth
+      Type: COGNITO_USER_POOLS
+      IdentitySource: method.request.header.Authorization
+      ProviderARNs:
+        - !GetAtt VolunteerUserPool.Arn
+
+Outputs:
+  GraphQLApiId:
+    Value: !Ref GraphQLApi # Expose API ID
+    Description: "API Gateway ID"

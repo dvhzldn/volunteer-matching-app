@@ -27,9 +27,8 @@ type_defs = load_schema_from_path("schema.graphql")
 query = QueryType()
 mutation = MutationType()
 
-##DynamoDB helper functions
 
-
+##DynamoDB helper function
 def create_volunteer_item(
     name: str, location: str, skills: List[str], availability: str
 ) -> Dict[str, Any]:
@@ -55,9 +54,21 @@ def create_volunteer_item(
     }
 
 
+def get_user_claims(info: Any) -> Optional[Dict[str, Any]]:
+    """Extract Cognito claims from Lambda/API Gateway context."""
+    try:
+        # Access raw ASGI scope
+        scope = info.context["scope"]
+        aws_event = scope["aws.event"]
+
+        # Common path for Cognito Authorizer
+        claims = aws_event["requestContext"]["authorizer"]["claims"]
+        return claims
+    except (KeyError, TypeError):
+        return None
+
+
 ## GraphQL resolvers
-
-
 @mutation.field("registerVolunteer")
 def resolve_register_volunteer(
     obj: Any, info: Any, name: str, location: str, skills: List[str], availability: str
@@ -78,6 +89,17 @@ def resolve_register_volunteer(
 def resolve_find_matches(
     obj: Any, info: Any, skillRequired: str, location: str
 ) -> List[Dict[str, Any]]:
+
+    claims = get_user_claims(info)
+    if not claims:
+        raise Exception("Authentication required to find matches")
+
+    user_groups = claims.get("cognito:groups", [])
+    if "Charity" not in user_groups:
+        raise Exception(
+            "Authorisation denied. Matching only available to charity users"
+        )
+
     try:
         response = table.query(
             IndexName="GSI1",
