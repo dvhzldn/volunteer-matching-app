@@ -1,0 +1,48 @@
+# --- Types ---
+
+type VolunteerProfile {
+  id: ID!
+  name: String!
+  location: String!
+  skills: [String!]!
+  availability: String!
+}
+
+type CharityNeed {
+  id: ID!
+  organization: String!
+  location: String!
+  skillNeeded: String!
+  description: String!
+}
+
+type VolunteerMatch {
+  volunteer: VolunteerProfile!
+  matchScore: Int!
+}
+
+# --- Queries ---
+
+type Query {
+  getVolunteerProfile(id: ID!): VolunteerProfile
+}
+
+# --- Mutations ---
+
+type Mutation {
+  # Public endpoint
+  registerVolunteer(
+    name: String!
+    location: String!
+    skills: [String!]!
+    availability: String!
+  ): VolunteerProfile!
+
+  # Requires auth
+  findMatches(skillRequired: String!, location: String!): [VolunteerMatch!]!
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+}

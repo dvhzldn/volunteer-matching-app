@@ -1,0 +1,11 @@
+# Core GraphQL & Web Server
+fastapi
+uvicorn
+ariadne
+ariadne-graphql
+
+# AWS Integration
+mangum
+
+# DynamoDB Access
+boto3
