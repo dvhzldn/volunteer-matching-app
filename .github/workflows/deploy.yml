@@ -35,7 +35,7 @@ jobs:
       - name: SAM build
         id: build
         run: |
-          sam build --template sam/template.yaml --base-dir backend
+          sam build --template sam/template.yaml
 
       - name: SAM deploy
         run: |
