@@ -92,7 +92,7 @@ async function executeGraphQL(query, variables, requiresAuth = false) {
       return;
     }
     // ID Token for API Gateway Authorizer
-    headers["Authorization"] = globalIdToken;
+    headers["Authorization"] = "Bearer " + globalIdToken;
   }
 
   try {

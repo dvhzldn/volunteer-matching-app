@@ -57,7 +57,6 @@ Resources:
         AllowOrigin: "'*'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowMethods: "'*'"
-
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
         Authorizers:
@@ -78,6 +77,7 @@ Resources:
         # Policy permitting Lambda function to perform CRUD operations on the DynamoDB
         - DynamoDBCrudPolicy:
             TableName: !Ref MatchingTable
+        - AWSLambdaBasicExecutionRole
 
       Events:
         Api:
