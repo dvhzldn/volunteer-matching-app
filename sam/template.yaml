@@ -70,7 +70,7 @@ Resources:
     Properties:
       Handler: app.handler
       Runtime: python3.11
-      CodeUri: ./sam/backend/
+      CodeUri: backend/
       Environment:
         Variables:
           MATCHING_TABLE_NAME: !Ref MatchingTable
