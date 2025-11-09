@@ -74,8 +74,3 @@ jobs:
           else
             echo "No failed stack found — nothing to delete."
           fi
-
-      - name: S3 cleanup
-        if: always() # Run even if deployment fails
-        run: |
-          aws s3 rb s3://matching-deploy-${{ github.sha }} --force
