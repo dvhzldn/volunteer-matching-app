@@ -71,7 +71,7 @@ Resources:
             UserPoolArn: !GetAtt VolunteerUserPool.Arn
 
   # Lambda Function placeholder
-  GraphQLFunctionV2:
+  GraphQLFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: app.handler
@@ -94,21 +94,6 @@ Resources:
             RestApiId: !Ref VolunteerMatchingApi
             Auth:
               Authorizer: CognitoAuthorizer
-        ApiOptions:
-          Type: Api
-          Properties:
-            Path: /graphql
-            Method: OPTIONS
-            RestApiId: !Ref VolunteerMatchingApi
-            Auth:
-              Authorizer: NONE
-  GraphqlFunctionPermissionV2:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt GraphQLFunctionV2.Arn
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${VolunteerMatchingApi}/*/*"
 
   # Cognito pool for auth
   VolunteerUserPool:
