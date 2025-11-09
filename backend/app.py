@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from ariadne import (
     load_schema_from_path,
@@ -132,6 +133,18 @@ def resolve_find_matches(
 executable_schema = make_executable_schema(type_defs, query, mutation)
 
 app = FastAPI()
+
+origins = [
+    "*",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # GraphQL route
 app.mount("/graphql", GraphQL(executable_schema, debug=True))
