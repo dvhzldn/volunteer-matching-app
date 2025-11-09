@@ -9,6 +9,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-west-2
+      BUCKET_NAME: matching-deploy-${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,13 +28,12 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-2
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Create S3 Deployment Bucket
-        id: create_bucket
         run: |
-          BUCKET_NAME="matching-deploy-${{ github.sha }}"
-          aws s3 mb s3://$BUCKET_NAME --region eu-west-2
+          echo "Creating deployment bucket $BUCKET_NAME..."
+          aws s3 mb s3://$BUCKET_NAME --region $AWS_REGION || echo "Bucket already exists, continuing..."
 
       - name: SAM build
         id: build
@@ -57,15 +59,14 @@ jobs:
           sam deploy \
             --stack-name VolunteerMatchingApp-Dev \
             --template-file .aws-sam/build/template.yaml \
-            --s3-bucket matching-deploy-${{ github.sha }} \
+            --s3-bucket $BUCKET_NAME \
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --no-fail-on-empty-changeset \
-            --region eu-west-2
+            --region $AWS_REGION
 
-      - name: Delete failed stack if deployment fails
-        if: failure() # runs only if the previous step failed
+      - name: Cleanup failed CloudFormation stack (post-deploy)
+        if: failure()
         run: |
-          echo "Checking if CloudFormation stack needs deletion after failed deploy..."
           STATUS=$(aws cloudformation describe-stacks --stack-name VolunteerMatchingApp-Dev --query "Stacks[0].StackStatus" --output text || echo "NOT_FOUND")
           if [[ "$STATUS" == *"ROLLBACK_COMPLETE"* || "$STATUS" == *"ROLLBACK_FAILED"* ]]; then
             echo "Deleting failed stack after deployment failure..."
@@ -74,3 +75,11 @@ jobs:
           else
             echo "No failed stack found — nothing to delete."
           fi
+
+      - name: Delete S3 Deployment Bucket
+        if: always()
+        run: |
+          echo "Emptying bucket $BUCKET_NAME..."
+          aws s3 rm s3://$BUCKET_NAME --recursive || echo "Bucket already empty or does not exist"
+          echo "Deleting bucket $BUCKET_NAME..."
+          aws s3 rb s3://$BUCKET_NAME || echo "Bucket already deleted"

@@ -16,8 +16,7 @@ from ariadne import (
 from ariadne.asgi import GraphQL
 import boto3
 
-from jose import jwks, jwt
-from jose.utils import b64url_decode
+from jose import jwt
 
 ## Config/init
 
