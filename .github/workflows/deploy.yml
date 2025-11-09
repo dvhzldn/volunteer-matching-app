@@ -41,6 +41,17 @@ jobs:
       - name: Validate SAM Template
         run: sam validate --template sam/template.yaml
 
+      - name: Delete CloudFormation stack if failed
+        run: |
+          if aws cloudformation describe-stacks --stack-name VolunteerMatchingApp-Dev >/dev/null 2>&1; then
+            STATUS=$(aws cloudformation describe-stacks --stack-name VolunteerMatchingApp-Dev --query "Stacks[0].StackStatus" --output text)
+            if [[ "$STATUS" == *"ROLLBACK_COMPLETE"* || "$STATUS" == *"ROLLBACK_FAILED"* ]]; then
+              echo "Deleting failed stack before redeploy..."
+              aws cloudformation delete-stack --stack-name VolunteerMatchingApp-Dev
+              aws cloudformation wait stack-delete-complete --stack-name VolunteerMatchingApp-Dev
+            fi
+          fi
+
       - name: SAM deploy
         run: |
           sam deploy \
@@ -50,6 +61,19 @@ jobs:
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --no-fail-on-empty-changeset \
             --region eu-west-2
+
+      - name: Delete failed stack if deployment fails
+        if: failure() # runs only if the previous step failed
+        run: |
+          echo "Checking if CloudFormation stack needs deletion after failed deploy..."
+          STATUS=$(aws cloudformation describe-stacks --stack-name VolunteerMatchingApp-Dev --query "Stacks[0].StackStatus" --output text || echo "NOT_FOUND")
+          if [[ "$STATUS" == *"ROLLBACK_COMPLETE"* || "$STATUS" == *"ROLLBACK_FAILED"* ]]; then
+            echo "Deleting failed stack after deployment failure..."
+            aws cloudformation delete-stack --stack-name VolunteerMatchingApp-Dev
+            aws cloudformation wait stack-delete-complete --stack-name VolunteerMatchingApp-Dev
+          else
+            echo "No failed stack found — nothing to delete."
+          fi
 
       - name: S3 cleanup
         if: always() # Run even if deployment fails
