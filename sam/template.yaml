@@ -71,7 +71,7 @@ Resources:
             UserPoolArn: !GetAtt VolunteerUserPool.Arn
 
   # Lambda Function placeholder
-  GraphQLFunction:
+  GraphQLFunctionV2:
     Type: AWS::Serverless::Function
     Properties:
       Handler: app.handler
@@ -102,7 +102,7 @@ Resources:
             RestApiId: !Ref VolunteerMatchingApi
             Auth:
               Authorizer: NONE
-  GraphqlFunctionPermission:
+  GraphqlFunctionPermissionV2:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
