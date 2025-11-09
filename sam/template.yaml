@@ -74,7 +74,6 @@ Resources:
       Environment:
         Variables:
           MATCHING_TABLE_NAME: !Ref MatchingTable
-          AWS_REGION: !Ref AWS::Region
           STAGE: prod
       Policies:
         - AWSLambdaBasicExecutionRole
