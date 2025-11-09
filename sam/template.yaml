@@ -51,12 +51,13 @@ Resources:
 
   VolunteerMatchingApi:
     Type: AWS::Serverless::Api
+    DependsOn: VolunteerUserPool
     Properties:
       StageName: prod
       Cors:
-        AllowOrigin: "'*'"
-        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-        AllowMethods: "'*'"
+        AllowOrigin: "*"
+        AllowHeaders: "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token"
+        AllowMethods: "*"
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
         Authorizers:
@@ -73,11 +74,13 @@ Resources:
       Environment:
         Variables:
           MATCHING_TABLE_NAME: !Ref MatchingTable
+          AWS_REGION: !Ref AWS::Region
+          STAGE: prod
       Policies:
+        - AWSLambdaBasicExecutionRole
         # Policy permitting Lambda function to perform CRUD operations on the DynamoDB
         - DynamoDBCrudPolicy:
             TableName: !Ref MatchingTable
-        - AWSLambdaBasicExecutionRole
 
       Events:
         Api:
@@ -121,7 +124,7 @@ Outputs:
     Value: !Ref VolunteerMatchingApi
     Description: "API Gateway ID"
   GraphQLApiEndpoint:
-    Value: !Sub "https://${VolunteerMatchingApi}.execute-api.${AWS::Region}.amazonaws.com/prod/graphql"
+    Value: !Sub "https://${VolunteerMatchingApi}.execute-api.${AWS::Region}.amazonaws.com/${VolunteerMatchingApi.Stage}"
     Description: "GraphQL API endpoint URL"
   VolunteerUserPoolId:
     Value: !Ref VolunteerUserPool

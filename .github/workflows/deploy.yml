@@ -30,20 +30,20 @@ jobs:
       - name: Create S3 Deployment Bucket
         id: create_bucket
         run: |
-          BUCKET_NAME="matching-deploy-${{ github.sha }}"
+          BUCKET_NAME="matching-deploy-${{ github.run_id }}"
           aws s3 mb s3://$BUCKET_NAME --region eu-west-2
 
       - name: SAM build
         id: build
         run: |
-          sam build --template sam/template.yaml --base-dir ./
+          sam build --template sam/template.yaml
 
       - name: SAM deploy
         run: |
           sam deploy \
             --stack-name VolunteerMatchingApp-Dev \
             --template-file .aws-sam/build/template.yaml \
-            --s3-bucket matching-deploy-${{ github.sha }} \
+            --s3-bucket matching-deploy-${{ github.run_id }} \
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --no-fail-on-empty-changeset \
             --region eu-west-2
