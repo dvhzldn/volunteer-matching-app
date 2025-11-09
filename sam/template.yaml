@@ -81,7 +81,6 @@ Resources:
         # Policy permitting Lambda function to perform CRUD operations on the DynamoDB
         - DynamoDBCrudPolicy:
             TableName: !Ref MatchingTable
-
       Events:
         Api:
           Type: Api
@@ -91,6 +90,14 @@ Resources:
             RestApiId: !Ref VolunteerMatchingApi
             Auth:
               Authorizer: CognitoAuthorizer
+        ApiOptions:
+          Type: Api
+          Properties:
+            Path: /graphql
+            Method: OPTIONS
+            RestApiId: !Ref VolunteerMatchingApi
+            Auth:
+              Authorizer: NONE
 
   # Cognito pool for auth
   VolunteerUserPool:
