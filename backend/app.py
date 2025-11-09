@@ -16,6 +16,9 @@ from ariadne import (
 from ariadne.asgi import GraphQL
 import boto3
 
+from jose import jwks, jwt
+from jose.utils import b64url_decode
+
 ## Config/init
 
 # DynamoDB client
@@ -56,16 +59,33 @@ def create_volunteer_item(
 
 
 def get_user_claims(info: Any) -> Optional[Dict[str, Any]]:
-    """Extract Cognito claims from Lambda/API Gateway context."""
+    """
+    Extract Cognito claims from Lambda/API Gateway context or directly from the Authorization header.
+    """
     try:
-        # Access raw ASGI scope
         scope = info.context["scope"]
         aws_event = scope["aws.event"]
 
-        # Common path for Cognito Authorizer
-        claims = aws_event["requestContext"]["authorizer"]["claims"]
-        return claims
-    except (KeyError, TypeError):
+        if "authorizer" in aws_event.get("requestContext", {}):
+            return aws_event["requestContext"]["authorizer"].get("claims")
+
+        headers = aws_event.get("headers", {})
+        auth_header = headers.get("authorization") or headers.get("Authorization")
+
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            claims = jwt.decode(
+                token,
+                key=None,
+                options={"verify_signature": False, "verify_aud": False},
+            )
+            if claims.get("token_use") == "id":
+                return claims
+
+        return None
+    except Exception as e:
+        # Log the error for debugging, but return None to fail authentication gracefully
+        print(f"Error extracting claims: {e}")
         return None
 
 

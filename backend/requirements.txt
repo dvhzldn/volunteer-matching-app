@@ -1,11 +1,7 @@
-# Core GraphQL & Web Server
 fastapi
 uvicorn
 ariadne
 ariadne-graphql-modules
-
-# AWS Integration
 mangum
-
-# DynamoDB Access
 boto3
+python-jose
