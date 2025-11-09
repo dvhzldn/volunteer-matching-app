@@ -38,6 +38,9 @@ jobs:
         run: |
           sam build --template sam/template.yaml --base-dir ./
 
+      - name: Validate SAM Template
+        run: sam validate --template sam/template.yaml
+
       - name: SAM deploy
         run: |
           sam deploy \
