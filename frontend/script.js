@@ -1,8 +1,8 @@
 // --- CONFIGURATION ---
-// TODO: Replace placeholders after SAM deployment
-const API_URL = "YOUR_API_GATEWAY_ENDPOINT/graphql";
-const USER_POOL_ID = "YOUR_COGNITO_USER_POOL_ID";
-const CLIENT_ID = "YOUR_COGNITO_CLIENT_ID";
+const API_URL =
+  "https://gf5tvb64e2.execute-api.eu-west-2.amazonaws.com/prod/graphql  ";
+const USER_POOL_ID = "eu-west-2_glcm8o1sO";
+const CLIENT_ID = "2ug7fgmgihth0m8b1hk0p0r46o";
 
 let globalIdToken = "";
 
