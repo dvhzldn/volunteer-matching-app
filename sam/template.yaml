@@ -7,6 +7,11 @@ Globals:
     Timeout: 10
     MemorySize: 256
 
+Parameters:
+  StageName:
+    Type: String
+    Default: prod
+
 Resources:
   MatchingTable:
     Type: AWS::DynamoDB::Table
@@ -53,7 +58,7 @@ Resources:
     Type: AWS::Serverless::Api
     DependsOn: VolunteerUserPool
     Properties:
-      StageName: prod
+      StageName: !Ref StageName
       Cors:
         AllowOrigin: "'*'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
@@ -131,11 +136,17 @@ Outputs:
     Value: !Ref VolunteerMatchingApi
     Description: "API Gateway ID"
   GraphQLApiEndpoint:
-    Value: !Sub "https://${VolunteerMatchingApi}.execute-api.${AWS::Region}.amazonaws.com/${VolunteerMatchingApi.Stage}"
+    Value: !Sub "https://${VolunteerMatchingApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/graphql"
+    Export:
+      Name: !Sub "${AWS::StackName}-GraphQLEndpoint"
     Description: "GraphQL API endpoint URL"
   VolunteerUserPoolId:
     Value: !Ref VolunteerUserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolId"
     Description: "Cognito user pool ID"
   VolunteerUserPoolClientId:
     Value: !Ref VolunteerUserPoolClient
+    Export:
+      Name: !Sub "${AWS::StackName}-UserPoolClientId"
     Description: "Cognito user pool client ID"
