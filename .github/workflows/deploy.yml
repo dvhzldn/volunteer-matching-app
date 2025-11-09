@@ -31,7 +31,7 @@ jobs:
         id: create_bucket
         run: |
           BUCKET_NAME="volunteer-matching-deploy-${{ github.sha }}"
-          aws s3 mb s3://$BUCKET_NAME --region eu-west-2 --create-bucket-configuration LocationConstraint=$REGION
+          aws s3 mb s3://$BUCKET_NAME --region eu-west-2
 
       - name: SAM build
         id: build
