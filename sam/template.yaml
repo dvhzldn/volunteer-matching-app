@@ -83,26 +83,91 @@ Resources:
           STAGE: prod
       Policies:
         - AWSLambdaBasicExecutionRole
-        # Policy permitting Lambda function to perform CRUD operations on the DynamoDB
         - DynamoDBCrudPolicy:
             TableName: !Ref MatchingTable
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /graphql
-            Method: POST
-            RestApiId: !Ref VolunteerMatchingApi
-            Auth:
-              Authorizer: CognitoAuthorizer
-        ApiOptions:
-          Type: Api
-          Properties:
-            Path: /graphql
-            Method: OPTIONS
-            RestApiId: !Ref VolunteerMatchingApi
-            Auth:
-              Authorizer: NONE
+  GraphqlResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt VolunteerMatchingApi.RootResourceId
+      PathPart: graphql
+      RestApiId: !Ref VolunteerMatchingApi
+
+  GraphqlPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !GetAtt VolunteerMatchingApi.Authorizers.CognitoAuthorizer
+      HttpMethod: POST
+      ResourceId: !Ref GraphqlResource
+      RestApiId: !Ref VolunteerMatchingApi
+
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GraphQLFunction.Arn}/invocations"
+        PassthroughBehavior: WHEN_NO_MATCH
+
+        RequestTemplates:
+          application/json: |
+            #set($context.authorizer.claims = $context.authorizer.claims)
+            {
+              "body": $input.json('$'),
+              "method": "$context.httpMethod",
+              "headers": {
+                #foreach($header in $input.params().header.keySet())
+                  "$header": "$util.escapeJavaScript($input.params().header.get($header))" #if($foreach.hasNext),#end
+                #end
+              },
+              "path": "$context.resourcePath",
+              "requestContext": {
+                "authorizer": {
+                  "claims": $context.authorizer.claims
+                }
+              }
+            }
+
+      MethodResponses:
+        - StatusCode: "200"
+
+  GraphqlOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      ResourceId: !Ref GraphqlResource
+      RestApiId: !Ref VolunteerMatchingApi
+
+      Integration:
+        Type: MOCK
+        IntegrationHttpMethod: POST
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        PassthroughBehavior: WHEN_NO_MATCH
+
+        IntegrationResponses:
+          - StatusCode: "200"
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS,PUT,DELETE'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ""
+
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseModels: {}
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+
+  GraphqlFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt GraphQLFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${VolunteerMatchingApi}/*/*"
 
   # Cognito pool for auth
   VolunteerUserPool:
