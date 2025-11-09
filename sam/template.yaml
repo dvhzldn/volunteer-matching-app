@@ -49,6 +49,16 @@ Resources:
             ReadCapacityUnits: 1
             WriteCapacityUnits: 1
 
+  VolunteerMatchingApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt VolunteerUserPool.Arn
+
   # Lambda Function placeholder
   GraphQLFunction:
     Type: AWS::Serverless::Function
@@ -70,6 +80,7 @@ Resources:
           Properties:
             Path: /graphql
             Method: POST
+            RestApiId: !Ref VolunteerMatchingApi
             Auth:
               Authorizer: CognitoAuthorizer
 
@@ -100,18 +111,16 @@ Resources:
       # Required for static web/mobile clients
       GenerateSecret: false
 
-  # API Gateway authoriser
-  CognitoAuthorizer:
-    Type: AWS::ApiGateway::Authorizer
-    Properties:
-      RestApiId: !Ref GraphQLApi
-      Name: CognitoAuth
-      Type: COGNITO_USER_POOLS
-      IdentitySource: method.request.header.Authorization
-      ProviderARNs:
-        - !GetAtt VolunteerUserPool.Arn
-
 Outputs:
   GraphQLApiId:
-    Value: !Ref GraphQLApi # Expose API ID
+    Value: !Ref VolunteerMatchingApi
     Description: "API Gateway ID"
+  GraphQLApiEndpoint:
+    Value: !Sub "https://${VolunteerMatchingApi}.execute-api.${AWS::Region}.amazonaws.com/prod/graphql"
+    Description: "GraphQL API endpoint URL"
+  VolunteerUserPoolId:
+    Value: !Ref VolunteerUserPool
+    Description: "Cognito user pool ID"
+  VolunteerUserPoolClientId:
+    Value: !Ref VolunteerUserPoolClient
+    Description: "Cognito user pool client ID"
