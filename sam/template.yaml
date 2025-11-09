@@ -102,6 +102,13 @@ Resources:
             RestApiId: !Ref VolunteerMatchingApi
             Auth:
               Authorizer: NONE
+  GraphqlFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt GraphQLFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${VolunteerMatchingApi}/*/*"
 
   # Cognito pool for auth
   VolunteerUserPool:
