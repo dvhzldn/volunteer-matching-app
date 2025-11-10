@@ -242,10 +242,8 @@ Resources:
           - Id: S3Origin
             DomainName: !GetAtt FrontendSiteBucket.DomainName
             OriginAccessControlId: !GetAtt VolunteerOAC.Id
-            CustomOriginConfig:
-              OriginProtocolPolicy: https-only
-              OriginSSLProtocols:
-                - TLSv1.2
+            S3OriginConfig:
+              OriginAccessIdentity: ""
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
 
