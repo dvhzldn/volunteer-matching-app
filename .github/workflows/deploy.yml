@@ -43,7 +43,7 @@ jobs:
 
       - name: Set frontend origin
         run: |
-          FRONTEND_ORIGIN="http://$FRONTEND_BUCKET_NAME.s3-website-$AWS_REGION.amazonaws.com"
+          FRONTEND_ORIGIN="http://$FRONTEND_BUCKET_NAME.s3-website.$AWS_REGION.amazonaws.com"
           echo "FRONTEND_ORIGIN=$FRONTEND_ORIGIN" >> $GITHUB_ENV
 
       - name: SAM build
