@@ -191,11 +191,14 @@ Resources:
         - Key: Project
           Value: VolunteerMatchingApp
 
-  VolunteerOAI:
-    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+  VolunteerOAC:
+    Type: AWS::CloudFront::OriginAccessControl
     Properties:
-      CloudFrontOriginAccessIdentityConfig:
-        Comment: OAI for secure access to frontend S3 bucket
+      OriginAccessControlConfig:
+        Name: !Sub "${AWS::StackName}-OAC"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
 
   VolunteerSiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -204,12 +207,15 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: AllowCloudFrontAccess
+          - Sid: AllowCloudFrontServicePrincipal
             Effect: Allow
             Principal:
-              AWS: !Sub "arn:aws:iam::cloudfront:user/origin-access-identity/${VolunteerOAI}"
+              Service: cloudfront.amazonaws.com
             Action: "s3:GetObject"
             Resource: !Sub "${FrontendSiteBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${VolunteerCloudFrontDistribution}"
 
   VolunteerCloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
@@ -235,8 +241,7 @@ Resources:
         Origins:
           - Id: S3Origin
             DomainName: !GetAtt FrontendSiteBucket.DomainName
-            S3OriginConfig:
-              OriginAccessIdentity: !Ref VolunteerOAI
+            OriginAccessControlId: !GetAtt VolunteerOAC.Id
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
 
