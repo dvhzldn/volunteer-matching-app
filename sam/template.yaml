@@ -109,6 +109,7 @@ Resources:
           CHARITY_GROUP_NAME: Charity
   PostConfirmationFunctionRole:
     Type: AWS::IAM::Role
+    DependsOn: VolunteerUserPool
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
