@@ -97,6 +97,23 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
 
+  PostConfirmationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: post_confirm_lambda.handler
+      Runtime: python3.11
+      CodeUri: backend/
+      Environment:
+        Variables:
+          CHARITY_GROUP_NAME: Charity
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            Effect: Allow
+            Action:
+              - cognito-idp:AdminAddUserToGroup
+            Resource: !GetAtt VolunteerUserPool.Arn
+
   VolunteerUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -110,6 +127,16 @@ Resources:
           RequireUppercase: true
       AutoVerifiedAttributes:
         - email
+      LambdaConfig:
+        PostConfirmation: !GetAtt PostConfirmationFunction.Arn
+
+  CharityUserPoolGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: Charity
+      Description: Default group for all verified users (Charities).
+      Precedence: 0
+      UserPoolId: !Ref VolunteerUserPool
 
   VolunteerUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
