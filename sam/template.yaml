@@ -14,6 +14,10 @@ Parameters:
   FrontendOrigin:
     Type: String
     Description: "Origin URL for the frontend (S3 website endpoint)"
+  LambdaCodeBucket:
+    Type: String
+  LambdaCodeKey:
+    Type: String
 
 Resources:
   MatchingTable:
@@ -97,19 +101,8 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
 
-  PostConfirmationFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: post_confirm_lambda.handler
-      Runtime: python3.11
-      CodeUri: backend/
-      Role: !GetAtt PostConfirmationFunctionRole.Arn
-      Environment:
-        Variables:
-          CHARITY_GROUP_NAME: Charity
   PostConfirmationFunctionRole:
     Type: AWS::IAM::Role
-    DependsOn: VolunteerUserPool
     Properties:
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
@@ -132,7 +125,29 @@ Resources:
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
-                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/*:log-stream:*"
+                Resource: !Sub "*"
+  PostConfirmationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-PostConfirm"
+      Handler: post_confirm_lambda.handler
+      Runtime: python3.11
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Role: !GetAtt PostConfirmationFunctionRole.Arn
+      Timeout: 10
+      MemorySize: 256
+      Environment:
+        Variables:
+          CHARITY_GROUP_NAME: Charity
+  PostConfirmationFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt PostConfirmationFunction.Arn
+      Principal: cognito-idp.amazonaws.com
+      SourceArn: !GetAtt VolunteerUserPool.Arn
 
   VolunteerUserPool:
     Type: AWS::Cognito::UserPool
