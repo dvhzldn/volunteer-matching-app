@@ -3,88 +3,160 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Volunteer Matching</title>
+    <title>Volunteer Matching Application</title>
     <style>
       body {
         font-family: sans-serif;
-        max-width: 800px;
+        max-width: 900px;
         margin: auto;
         padding: 20px;
+        background-color: #f4f4f9;
+        color: #333;
       }
-      input,
-      button,
-      textarea {
-        padding: 10px;
-        margin: 5px 0;
-        display: block;
-        width: 100%;
-        box-sizing: border-box;
-      }
-      pre {
-        background: #eee;
-        padding: 15px;
-        overflow-x: auto;
-        border: 1px solid #ccc;
+      h1 {
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
       }
       .section {
         border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 25px;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      }
+      input[type="text"],
+      input[type="password"],
+      select,
+      textarea,
+      #reg-skills {
+        padding: 12px;
+        margin: 8px 0;
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      button {
+        padding: 10px 15px;
+        margin-top: 15px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+        box-sizing: border-box;
+        font-weight: bold;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      pre {
+        background: #ecf0f1;
         padding: 15px;
-        margin-bottom: 20px;
+        overflow-x: auto;
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        white-space: pre-wrap;
+      }
+      /* Table Style */
+      #match-results-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+      }
+      #match-results-table th,
+      #match-results-table td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: left;
+      }
+      #match-results-table th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+        color: #555;
       }
     </style>
   </head>
   <body>
-    <h1>Volunteer Matching</h1>
+    <h1>Volunteer Matching System (Demo)</h1>
 
     <div class="section" id="auth-section">
-      <h2>Authentication (Cognito)</h2>
+      <h2>Authentication</h2>
+      <p>Log in with a charity account to unlock matching.</p>
       <input type="text" id="username" placeholder="Email/Username" required />
       <input type="password" id="password" placeholder="Password" required />
-      <button onclick="registerUser()">1. Register user</button>
-      <button onclick="loginUser()">2. Log in</button>
-      <p>Status: <span id="auth-status">Awaiting login...</span></p>
-      <p>
-        Token (for auth header):
-        <textarea id="id-token" rows="3" readonly></textarea>
+      <button onclick="registerUser()">Register New User</button>
+      <button onclick="loginUser()">Log in</button>
+      <p style="margin-top: 10px">
+        Status:
+        <span id="auth-status" style="font-weight: bold"
+          >Awaiting login...</span
+        >
       </p>
+      <details>
+        <summary>View Auth Token</summary>
+        <textarea
+          id="id-token"
+          rows="3"
+          readonly
+          style="font-size: 0.8em"
+        ></textarea>
+      </details>
     </div>
 
     <div class="section" id="api-section">
-      <h2>API interaction</h2>
-      <h3>A. Register volunteer</h3>
+      <h2>Public Volunteer Registration</h2>
       <input
         type="text"
         id="reg-name"
         placeholder="Volunteer name"
         value="Jane Doe"
       />
-      <input type="text" id="reg-loc" placeholder="Location" value="London" />
-      <input
-        type="text"
-        id="reg-skills"
-        placeholder="Skills [comma separated]"
-        value="Gardening,Tutor"
-      />
-      <input
-        type="text"
-        id="reg-avail"
-        placeholder="Availability (e.g. weekends)"
-        value="WEEKENDS"
-      />
-      <button onclick="registerVolunteer()">Register</button>
 
-      <h3>B. Find matches</h3>
-      <input
-        type="text"
-        id="match-skill"
-        placeholder="Skill Required"
-        value="Gardening"
-      />
-      <input type="text" id="match-loc" placeholder="Location" value="London" />
-      <button onclick="findMatches()">Find matches</button>
+      <label for="reg-loc">Location:</label>
+      <select id="reg-loc"></select>
 
-      <h3>API Response</h3>
-      <pre id="api-response">Response here...</pre>
+      <label for="reg-skills">Skills (Select multiple below):</label>
+      <select id="reg-skills" multiple size="4"></select>
+
+      <label for="reg-avail">Availability:</label>
+      <select id="reg-avail"></select>
+
+      <button onclick="registerVolunteer()">Register Volunteer</button>
+    </div>
+
+    <div class="section" id="match-section">
+      <h2>Find Matches (Charity Auth Required)</h2>
+
+      <label for="match-loc">Location to Search:</label>
+      <select id="match-loc"></select>
+
+      <label for="match-skill">Skill Required:</label>
+      <select id="match-skill"></select>
+
+      <button onclick="findMatches()">Find Matches</button>
+
+      <h3 style="margin-top: 30px">API Response / Match Results</h3>
+
+      <table id="match-results-table" style="display: none">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Location</th>
+            <th>Skills</th>
+            <th>Match Score</th>
+          </tr>
+        </thead>
+        <tbody id="match-results-body"></tbody>
+      </table>
+
+      <pre id="api-response" style="margin-top: 10px">Response here...</pre>
     </div>
 
     <script src="https://unpkg.com/amazon-cognito-identity-js@6.3.1/dist/amazon-cognito-identity.min.js"></script>
