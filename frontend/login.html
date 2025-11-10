@@ -51,33 +51,37 @@
           Log in to access the matching and registration tools.
         </p>
 
-        <div class="mb-3">
-          <input
-            type="email"
-            id="username"
-            class="form-control"
-            placeholder="Email/Username"
-            required
-            aria-label="Email or Username"
-          />
+        <div id="login-form">
+          <div class="mb-3">
+            <input
+              type="email"
+              id="username"
+              class="form-control"
+              placeholder="Email/Username"
+              required
+              aria-label="Email or Username"
+            />
+          </div>
+          <div class="mb-3">
+            <input
+              type="password"
+              id="password"
+              class="form-control"
+              placeholder="Password"
+              required
+              aria-label="Password"
+            />
+          </div>
+          <div class="d-grid gap-2 mb-3">
+            <button
+              id="register-user-btn"
+              class="btn btn-outline-primary btn-sm"
+            >
+              Register New User
+            </button>
+            <button id="login-btn" class="btn btn-primary">Log in</button>
+          </div>
         </div>
-        <div class="mb-3">
-          <input
-            type="password"
-            id="password"
-            class="form-control"
-            placeholder="Password"
-            required
-            aria-label="Password"
-          />
-        </div>
-        <div class="d-grid gap-2 mb-3">
-          <button id="register-user-btn" class="btn btn-outline-primary btn-sm">
-            Register New User
-          </button>
-          <button id="login-btn" class="btn btn-primary">Log in</button>
-        </div>
-
         <div id="verification-form" style="display: none">
           <p class="text-success text-center">
             Verification code sent! Check your email.
