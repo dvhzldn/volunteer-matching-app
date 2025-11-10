@@ -5,3 +5,4 @@ ariadne-graphql-modules
 mangum
 boto3
 python-jose
+requests

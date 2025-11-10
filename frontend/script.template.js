@@ -1,18 +1,14 @@
-// --- CONFIGURATION AND INITIALISATION ---
-// This section defines core constants and initialises global components required by the application.
-
 const API_URL = "__API_URL__" + "/";
 const USER_POOL_ID = "__USER_POOL_ID__";
 const CLIENT_ID = "__CLIENT_ID__";
-const TOKEN_STORAGE_KEY = "volunteer_app_id_token"; // Key used to securely store the session token in the browser.
+const AWS_REGION = "__AWS_REGION__";
 
-// Session Management: Initialise token from local storage.
-// This allows the user's session to persist across different pages (e.g., index.html and login.html).
+const COGNITO_ISSUER = `https://cognito-idp.${AWS_REGION}.amazonaws.com/${USER_POOL_ID}`;
+
+const TOKEN_STORAGE_KEY = "volunteer_app_id_token";
+
 let globalIdToken = localStorage.getItem(TOKEN_STORAGE_KEY) || "";
 
-// --- Data Lists ---
-// These arrays define the controlled vocabularies for fields like Location, Skills, and Availability.
-// These lists must be synchronized with the data constraints enforced by the DynamoDB schema or Lambda processing.
 const LOCATIONS = [
   "London",
   "Manchester",
@@ -54,15 +50,42 @@ const SKILL_OPTIONS = [
 
 const AVAILABILITY_OPTIONS = ["WEEKDAYS", "WEEKENDS", "EVENINGS", "FULLTIME"];
 
-// --- Cognito Initialisation ---
-// Sets up the Amazon Cognito User Pool required for user registration and authentication.
 const poolData = {
   UserPoolId: USER_POOL_ID,
   ClientId: CLIENT_ID,
 };
 const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
 
-// --- UTILITY FUNCTIONS (UI Rendering) ---
+/**
+ * Decodes the JWT payload to extract the expiration time ('exp').
+ * NOTE: This is a client-side *convenience* check (for UX) and MUST NOT replace
+ * the essential server-side signature verification of the token's validity.
+ */
+function decodeJwtPayload(token) {
+  try {
+    const payloadBase64 = token.split(".")[1];
+    const payload = atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/"));
+    return JSON.parse(payload);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Checks if the stored token is present and has not expired.
+ * @returns {boolean} True if the token is valid (not expired), false otherwise.
+ */
+function isTokenValid() {
+  if (!globalIdToken) return false;
+
+  const payload = decodeJwtPayload(globalIdToken);
+  if (!payload || !payload.exp) return false;
+
+  const expirationTimeMs = payload.exp * 1000;
+  const nowTimeMs = Date.now();
+
+  return expirationTimeMs > nowTimeMs;
+}
 
 /**
  * Populates a standard HTML <select> element with options.
@@ -72,7 +95,7 @@ const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
  */
 function addSelectOptions(selectId, options) {
   const select = document.getElementById(selectId);
-  if (!select) return; // Exit gracefully if the element is not on the current page.
+  if (!select) return;
 
   select.innerHTML = "";
   const defaultOption = document.createElement("option");
@@ -136,14 +159,12 @@ function renderSkillCheckboxes() {
  * based on the elements present on the loaded HTML page.
  */
 function populateDropdowns() {
-  // Populate registration fields if present (on index.html)
   if (document.getElementById("reg-loc")) {
     addSelectOptions("reg-loc", LOCATIONS);
     addSelectOptions("reg-avail", AVAILABILITY_OPTIONS);
     renderSkillCheckboxes();
   }
 
-  // Populate matching fields if present (on index.html)
   if (document.getElementById("match-loc")) {
     addSelectOptions("match-loc", LOCATIONS);
     addSelectOptions("match-skill", SKILL_OPTIONS);
@@ -160,7 +181,6 @@ function renderMatchTable(data) {
   const tableContainer = document.getElementById("match-results-table");
   const apiResponsePre = document.getElementById("api-response");
 
-  // Clear previous state
   tableBody.innerHTML = "";
   apiResponsePre.style.display = "none";
   tableContainer.style.display = "none";
@@ -190,7 +210,6 @@ function renderMatchTable(data) {
 
     const scoreCell = row.insertCell();
     scoreCell.textContent = `${match.matchScore}%`;
-    // Apply styling based on match score for visual feedback
     scoreCell.classList.add(
       match.matchScore >= 80
         ? "text-success"
@@ -200,8 +219,6 @@ function renderMatchTable(data) {
     );
   });
 }
-
-// --- AUTHENTICATION FUNCTIONS (Cognito Integration) ---
 
 /**
  * Handles user registration with Amazon Cognito.
@@ -264,7 +281,6 @@ function loginUser() {
 
   cognitoUser.authenticateUser(authenticationDetails, {
     onSuccess: (result) => {
-      // 1. Persist token across pages
       const idToken = result.getIdToken().getJwtToken();
       localStorage.setItem(TOKEN_STORAGE_KEY, idToken);
       globalIdToken = idToken;
@@ -272,7 +288,6 @@ function loginUser() {
       statusEl.textContent = `Login Success! Redirecting to application hub...`;
       statusEl.className = "status-success";
 
-      // 2. Enforce secure redirection
       setTimeout(() => {
         window.location.href = "index.html";
       }, 500);
@@ -297,8 +312,6 @@ function logoutUser() {
   window.location.href = "login.html";
 }
 
-// --- API EXECUTION FUNCTIONS ---
-
 /**
  * General-purpose function for executing GraphQL queries or mutations against the backend API.
  * It automatically handles token inclusion for protected endpoints and manages basic error states.
@@ -313,14 +326,12 @@ async function executeGraphQL(query, variables, requiresAuth = false) {
   const apiResponsePre = document.getElementById("api-response");
 
   if (requiresAuth) {
-    // Authentication Guard: Redirects if the token is missing for a protected call.
-    if (!globalIdToken) {
+    if (!isTokenValid()) {
       return logoutUser();
     }
     headers["Authorization"] = globalIdToken;
   }
 
-  // Set loading state on the application hub page
   if (apiResponsePre) {
     apiResponsePre.textContent = "Loading...";
     apiResponsePre.style.display = "block";
@@ -336,7 +347,6 @@ async function executeGraphQL(query, variables, requiresAuth = false) {
       body: JSON.stringify({ query, variables }),
     });
 
-    // Authorization Check: If the API returns 401/403 (Unauthorized/Forbidden), force logout.
     if (response.status === 401 || response.status === 403) {
       return logoutUser();
     }
@@ -346,12 +356,10 @@ async function executeGraphQL(query, variables, requiresAuth = false) {
     if (query.includes("findMatches")) {
       renderMatchTable(data);
     } else if (apiResponsePre) {
-      // Display raw JSON response for registration/API calls on index.html
       apiResponsePre.textContent = JSON.stringify(data, null, 2);
       apiResponsePre.style.display = "block";
     }
   } catch (error) {
-    // Handle network failures gracefully
     if (apiResponsePre) {
       apiResponsePre.textContent = `Network Error: ${error.message}`;
       apiResponsePre.style.display = "block";
@@ -371,7 +379,6 @@ function registerVolunteer() {
   const location = document.getElementById("reg-loc").value;
   const availability = document.getElementById("reg-avail").value;
 
-  // Collect all skills from checkboxes marked as checked
   const skills = Array.from(
     document.querySelectorAll(".reg-skill-checkbox:checked")
   ).map((checkbox) => checkbox.value);
@@ -427,14 +434,11 @@ function findMatches() {
   executeGraphQL(mutation, variables, true);
 }
 
-// --- INITIALISATION AND PAGE ROUTING ---
-
 /**
  * Attaches necessary event listeners to buttons based on which elements are present on the current page.
  * This prevents runtime errors when switching between login.html and index.html.
  */
 function attachEventListeners() {
-  // Listeners for the login/signup page (login.html)
   if (document.getElementById("login-btn")) {
     document
       .getElementById("register-user-btn")
@@ -442,7 +446,6 @@ function attachEventListeners() {
     document.getElementById("login-btn").addEventListener("click", loginUser);
   }
 
-  // Listeners for the application hub (index.html)
   if (document.getElementById("register-volunteer-btn")) {
     document
       .getElementById("register-volunteer-btn")
@@ -463,10 +466,9 @@ function checkAuthStatus() {
   const statusEl = document.getElementById("auth-status");
   const authAlert = document.getElementById("auth-alert");
 
-  // This logic only executes on index.html
   if (!tokenEl || !statusEl) return;
 
-  if (globalIdToken) {
+  if (isTokenValid()) {
     tokenEl.value = globalIdToken;
     statusEl.textContent =
       "Authenticated. Token successfully loaded from session.";
@@ -474,22 +476,29 @@ function checkAuthStatus() {
   } else {
     authAlert.style.display = "block";
     statusEl.textContent =
-      "Authentication Failed: Not logged in. Redirecting to login...";
+      "Authentication Failed: Session expired or not logged in. Redirecting to login...";
     statusEl.className = "status-error";
 
-    // Redirect to login page to prevent unauthorized access
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    globalIdToken = "";
+
     setTimeout(() => {
       window.location.href = "login.html";
     }, 1500);
   }
 }
 
-// Execution on page load
 document.addEventListener("DOMContentLoaded", () => {
+  if (USER_POOL_ID.startsWith("__")) {
+    console.error(
+      "CONFIGURATION ERROR: Environment variables were not substituted. Check CI/CD pipeline."
+    );
+    alert("CRITICAL CONFIGURATION ERROR: Please check deployment pipeline.");
+    return;
+  }
   populateDropdowns();
   attachEventListeners();
 
-  // Check authentication status only if the hub elements are present (index.html)
   if (document.getElementById("auth-alert")) {
     checkAuthStatus();
   }

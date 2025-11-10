@@ -1,6 +1,7 @@
 import os
 import uuid
 import json
+import requests
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
@@ -17,11 +18,37 @@ from ariadne.asgi import GraphQL
 import boto3
 
 from jose import jwt
-
+from jose.exceptions import JWTError
 
 TABLE_NAME: str = os.environ.get("MATCHING_TABLE_NAME", "MatchingTable")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
+
+JWKS_URL = os.environ.get("JWKS_URL")
+if not JWKS_URL:
+    print("FATAL: JWKS_URL environment variable is missing. Authentication will fail.")
+
+JWKS_CACHE = None
+
+
+def get_jwks():
+    """Fetches and caches the JSON Web Key Set (JWKS) from the Cognito endpoint."""
+    global JWKS_CACHE
+    if JWKS_CACHE:
+        return JWKS_CACHE
+
+    if not JWKS_URL:
+        raise Exception("JWKS URL not configured for secure token verification.")
+
+    try:
+        response = requests.get(JWKS_URL)
+        response.raise_for_status()
+        JWKS_CACHE = response.json()
+        return JWKS_CACHE
+    except Exception as e:
+        print(f"Error fetching JWKS from {JWKS_URL}: {e}")
+        raise Exception("Failed to retrieve public keys for security verification.")
+
 
 type_defs = load_schema_from_path("schema.graphql")
 query = QueryType()
@@ -65,23 +92,13 @@ def get_user_claims(info: Any) -> Optional[Dict[str, Any]]:
             or {}
         )
 
-        print("===== DEBUG: AWS EVENT STRUCTURE START =====")
-        try:
-            print(json.dumps(aws_event, indent=2)[:3000])
-        except Exception:
-            print(str(aws_event))
-        print("===== DEBUG: AWS EVENT STRUCTURE END =====")
-
         request_ctx = aws_event.get("requestContext", {})
         authorizer = request_ctx.get("authorizer", {})
 
-        if isinstance(authorizer, dict):
-            if "claims" in authorizer:
-                return authorizer["claims"]
-            if "jwt" in authorizer and isinstance(authorizer["jwt"], dict):
-                jwt_claims = authorizer["jwt"].get("claims")
-                if jwt_claims:
-                    return jwt_claims
+        if isinstance(authorizer, dict) and authorizer:
+            claims = authorizer.get("claims") or authorizer.get("jwt", {}).get("claims")
+            if claims:
+                return claims
 
         headers = aws_event.get("headers", {}) or {}
         auth_header = (
@@ -91,16 +108,29 @@ def get_user_claims(info: Any) -> Optional[Dict[str, Any]]:
         )
         if auth_header:
             token = auth_header.split()[-1]
-            from jose import jwt
 
-            claims = jwt.decode(
-                token,
-                key=None,
-                options={"verify_signature": False, "verify_aud": False},
-            )
-            if claims.get("token_use") in ("id", "access"):
+            try:
+                public_keys = get_jwks()
+
+                claims = jwt.decode(
+                    token,
+                    public_keys,
+                    options={
+                        "verify_aud": False,
+                        "verify_signature": True,
+                    },  # Explicitly set to True for clarity
+                    algorithms=["RS256"],
+                )
+
+                if claims.get("token_use") in ("id", "access"):
+                    return claims
                 return claims
-            return claims
+            except JWTError as e:
+                print(f"SECURITY ERROR: Token verification failed: {e}")
+                return None
+            except Exception as e:
+                print(f"Error during manual token verification: {e}")
+                return None
 
         print("DEBUG: No claims or auth header found in event")
         return None

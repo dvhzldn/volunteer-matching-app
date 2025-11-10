@@ -105,13 +105,14 @@ jobs:
           echo "USER_POOL_ID=$USER_POOL_ID" >> $GITHUB_ENV
           echo "CLIENT_ID=$CLIENT_ID" >> $GITHUB_ENV
 
-      - name: Generate script.js from template
+      - name: Generate script.js with injected values from template
         run: |
           echo "Generating frontend script.js from template..."
           cp frontend/script.template.js frontend/script.js
           sed -i "s|__API_URL__|$API_URL|g" frontend/script.js
           sed -i "s|__USER_POOL_ID__|$USER_POOL_ID|g" frontend/script.js
           sed -i "s|__CLIENT_ID__|$CLIENT_ID|g" frontend/script.js
+          sed -i "s|__AWS_REGION__|$AWS_REGION|g" frontend/script.js
 
       - name: Deploy frontend to S3
         run: |
