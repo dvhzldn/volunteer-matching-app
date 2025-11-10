@@ -12,6 +12,8 @@ jobs:
     env:
       AWS_REGION: eu-west-2
       BUCKET_NAME: matching-deploy-${{ github.sha }}
+      STACK_NAME: VolunteerMatchingApp-Dev
+      FRONTEND_BUCKET_NAME: volunteer-frontend-${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,10 +32,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Create S3 Deployment Bucket
+      - name: Create deployment bucket
         run: |
           echo "Creating deployment bucket $BUCKET_NAME..."
           aws s3 mb s3://$BUCKET_NAME --region $AWS_REGION || echo "Bucket already exists, continuing..."
+
+      - name: Create frontend bucket
+        run: |
+          aws s3 mb s3://$FRONTEND_BUCKET_NAME --region $AWS_REGION || echo "Frontend bucket exists"
+
+      - name: Set frontend origin
+        run: |
+          FRONTEND_ORIGIN="http://$FRONTEND_BUCKET_NAME.s3-website-$AWS_REGION.amazonaws.com"
+          echo "FRONTEND_ORIGIN=$FRONTEND_ORIGIN" >> $GITHUB_ENV
 
       - name: SAM build
         id: build
@@ -54,7 +65,7 @@ jobs:
             fi
           fi
 
-      - name: SAM deploy
+      - name: Deploy backend SAM
         run: |
           sam deploy \
             --stack-name VolunteerMatchingApp-Dev \
@@ -62,7 +73,8 @@ jobs:
             --s3-bucket $BUCKET_NAME \
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --no-fail-on-empty-changeset \
-            --region $AWS_REGION
+            --region $AWS_REGION \
+            --parameter-overrides FrontendOrigin=$FRONTEND_ORIGIN
 
       - name: Cleanup failed CloudFormation stack (post-deploy)
         if: failure()
@@ -76,10 +88,33 @@ jobs:
             echo "No failed stack found — nothing to delete."
           fi
 
-      - name: Delete S3 Deployment Bucket
+      - name: Get backend outputs
+        id: outputs
+        run: |
+          echo "Fetching SAM outputs..."
+          API_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='GraphQLApiEndpoint'].OutputValue" --output text)
+          USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='VolunteerUserPoolId'].OutputValue" --output text)
+          CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='VolunteerUserPoolClientId'].OutputValue" --output text)
+          echo "API_URL=$API_URL" >> $GITHUB_ENV
+          echo "USER_POOL_ID=$USER_POOL_ID" >> $GITHUB_ENV
+          echo "CLIENT_ID=$CLIENT_ID" >> $GITHUB_ENV
+
+      - name: Generate script.js from template
+        run: |
+          echo "Generating frontend script.js from template..."
+          cp frontend/script.template.js frontend/script.js
+          sed -i "s|__API_URL__|$API_URL|g" frontend/script.js
+          sed -i "s|__USER_POOL_ID__|$USER_POOL_ID|g" frontend/script.js
+          sed -i "s|__CLIENT_ID__|$CLIENT_ID|g" frontend/script.js
+
+      - name: Deploy frontend to S3
+        run: |
+          echo "Uploading frontend to S3..."
+          aws s3 sync frontend/ s3://$FRONTEND_BUCKET_NAME/ --delete
+          aws s3 website s3://$FRONTEND_BUCKET_NAME --index-document index.html --error-document index.html
+
+      - name: Cleanup deployment bucket
         if: always()
         run: |
-          echo "Emptying bucket $BUCKET_NAME..."
-          aws s3 rm s3://$BUCKET_NAME --recursive || echo "Bucket already empty or does not exist"
-          echo "Deleting bucket $BUCKET_NAME..."
-          aws s3 rb s3://$BUCKET_NAME || echo "Bucket already deleted"
+          aws s3 rm s3://$BUCKET_NAME --recursive || echo "Deployment bucket empty"
+          aws s3 rb s3://$BUCKET_NAME || echo "Deployment bucket deleted"

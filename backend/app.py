@@ -18,20 +18,16 @@ import boto3
 
 from jose import jwt
 
-## Config/init
 
-# DynamoDB client
 TABLE_NAME: str = os.environ.get("MATCHING_TABLE_NAME", "MatchingTable")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
 
-# GraphQL schema
 type_defs = load_schema_from_path("schema.graphql")
 query = QueryType()
 mutation = MutationType()
 
 
-##DynamoDB helper function
 def create_volunteer_item(
     name: str, location: str, skills: List[str], availability: str
 ) -> Dict[str, Any]:
@@ -80,10 +76,8 @@ def get_user_claims(info: Any) -> Optional[Dict[str, Any]]:
         authorizer = request_ctx.get("authorizer", {})
 
         if isinstance(authorizer, dict):
-            # REST API (v1)
             if "claims" in authorizer:
                 return authorizer["claims"]
-            # HTTP API (v2)
             if "jwt" in authorizer and isinstance(authorizer["jwt"], dict):
                 jwt_claims = authorizer["jwt"].get("claims")
                 if jwt_claims:
@@ -108,7 +102,6 @@ def get_user_claims(info: Any) -> Optional[Dict[str, Any]]:
                 return claims
             return claims
 
-        # Nothing found
         print("DEBUG: No claims or auth header found in event")
         return None
 
@@ -117,7 +110,6 @@ def get_user_claims(info: Any) -> Optional[Dict[str, Any]]:
         return None
 
 
-## GraphQL resolvers
 @mutation.field("registerVolunteer")
 def resolve_register_volunteer(
     obj: Any, info: Any, name: str, location: str, skills: List[str], availability: str
@@ -130,7 +122,6 @@ def resolve_register_volunteer(
         return json.loads(volunteer_item["Data"])
     except Exception as e:
         print(f"Error registering volunteer: {e}")
-        # TODO: GraphQL error
         raise Exception(f"Database write failed: {e}")
 
 
@@ -163,7 +154,6 @@ def resolve_find_matches(
                 profile_data = json.loads(item["Data"])
 
                 if skillRequired in profile_data.get("skills", []):
-                    # TODO Improve match logic
                     match_score = 100
                     matches.append(
                         {"volunteer": profile_data, "matchScore": match_score}
@@ -175,8 +165,6 @@ def resolve_find_matches(
         print(f"Error finding matches: {e}")
         raise Exception(f"Match query failed: {e}")
 
-
-## FastAPI and GraphQL
 
 executable_schema = make_executable_schema(type_defs, query, mutation)
 
@@ -195,7 +183,6 @@ app.add_middleware(
 )
 
 
-# Context injection function
 async def context_value_function(request):
     """
     Ensures AWS event and headers are available to resolvers.
@@ -208,7 +195,6 @@ async def context_value_function(request):
     }
 
 
-# GraphQL route with custom context
 app.mount(
     "/graphql",
     GraphQL(executable_schema, debug=True, context_value=context_value_function),

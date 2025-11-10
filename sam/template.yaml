@@ -11,6 +11,9 @@ Parameters:
   StageName:
     Type: String
     Default: prod
+  FrontendOrigin:
+    Type: String
+    Description: "Origin URL for the frontend (S3 website endpoint)"
 
 Resources:
   MatchingTable:
@@ -18,7 +21,6 @@ Resources:
     Properties:
       TableName: !Sub "${AWS::StackName}-MatchingTable"
 
-      # 1 RCU / 1 WCU to stay within Free Tier
       BillingMode: PROVISIONED
       ProvisionedThroughput:
         ReadCapacityUnits: 1
@@ -49,7 +51,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          # 1 RCU / 1 WCU to stay within the Free Tier
           ProvisionedThroughput:
             ReadCapacityUnits: 1
             WriteCapacityUnits: 1
@@ -60,9 +61,10 @@ Resources:
     Properties:
       StageName: !Ref StageName
       Cors:
-        AllowOrigin: "'*'"
+        AllowOrigin: !Ref FrontendOrigin
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowMethods: "'GET,POST,OPTIONS,PUT,DELETE'"
+        AllowCredentials: true
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
         AddDefaultAuthorizerToCorsPreflight: false
@@ -70,7 +72,6 @@ Resources:
           CognitoAuthorizer:
             UserPoolArn: !GetAtt VolunteerUserPool.Arn
 
-  # Lambda Function placeholder
   GraphQLFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -95,12 +96,10 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
 
-  # Cognito pool for auth
   VolunteerUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: VolunteerAppUserPool
-      # Enforce strong password policies
       Policies:
         PasswordPolicy:
           MinimumLength: 12
@@ -119,7 +118,6 @@ Resources:
       ExplicitAuthFlows:
         - ALLOW_USER_SRP_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
-      # Required for static web/mobile clients
       GenerateSecret: false
 
 Outputs:
