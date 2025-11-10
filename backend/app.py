@@ -69,6 +69,13 @@ def get_user_claims(info: Any) -> Optional[Dict[str, Any]]:
             or {}
         )
 
+        print("===== DEBUG: AWS EVENT STRUCTURE START =====")
+        try:
+            print(json.dumps(aws_event, indent=2)[:3000])
+        except Exception:
+            print(str(aws_event))
+        print("===== DEBUG: AWS EVENT STRUCTURE END =====")
+
         request_ctx = aws_event.get("requestContext", {})
         authorizer = request_ctx.get("authorizer", {})
 

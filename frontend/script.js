@@ -1,8 +1,8 @@
 // --- CONFIGURATION ---
 const API_URL =
-  "https://5fthyqhbz5.execute-api.eu-west-2.amazonaws.com/prod/graphql/";
-const USER_POOL_ID = "eu-west-2_1qRnmlbFS";
-const CLIENT_ID = "7li986ddgl867mh5r5d075catq";
+  "https://7bvg3gphpk.execute-api.eu-west-2.amazonaws.com/prod/graphql/";
+const USER_POOL_ID = "eu-west-2_cr0rSFGro";
+const CLIENT_ID = "2ktpe71pqa96idn9pfd8ek98cl";
 
 let globalIdToken = "";
 
@@ -92,7 +92,7 @@ async function executeGraphQL(query, variables, requiresAuth = false) {
       return;
     }
     // ID Token for API Gateway Authorizer
-    headers["Authorization"] = `Bearer ${globalIdToken}`;
+    headers["Authorization"] = globalIdToken;
   }
 
   try {
