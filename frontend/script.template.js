@@ -56,6 +56,8 @@ const poolData = {
 };
 const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
 
+let registeredUsername = null;
+
 /**
  * Decodes the JWT payload to extract the expiration time ('exp').
  * NOTE: This is a client-side *convenience* check (for UX) and MUST NOT replace
@@ -228,6 +230,8 @@ function registerUser() {
   const username = document.getElementById("username").value;
   const password = document.getElementById("password").value;
   const statusEl = document.getElementById("auth-status");
+  const loginForm = document.getElementById("login-form");
+  const verificationForm = document.getElementById("verification-form");
   statusEl.className = "text-info";
 
   if (!username || !password) {
@@ -249,7 +253,80 @@ function registerUser() {
       statusEl.className = "status-error";
       return;
     }
+
+    registeredUsername = result.user.getUsername();
+
+    // Toggle UI to show verification form
+    loginForm.style.display = "none";
+    verificationForm.style.display = "block";
+
     statusEl.textContent = `User ${result.user.getUsername()} registered! Check email for verification.`;
+    statusEl.className = "status-success";
+  });
+}
+
+function verifyUser() {
+  const verificationCode = document.getElementById("verification-code").value;
+  const statusEl = document.getElementById("auth-status");
+
+  if (!registeredUsername) {
+    statusEl.textContent = "Error: Please register or log in first.";
+    statusEl.className = "status-error";
+    return;
+  }
+
+  if (!verificationCode) {
+    statusEl.textContent = "Please enter the 6-digit code.";
+    statusEl.className = "status-error";
+    return;
+  }
+
+  const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+    Username: registeredUsername,
+    Pool: userPool,
+  });
+
+  cognitoUser.confirmRegistration(verificationCode, true, (err, result) => {
+    if (err) {
+      statusEl.textContent = `Verification Error: ${err.message}`;
+      statusEl.className = "status-error";
+      return;
+    }
+
+    statusEl.textContent = `Success! Account verified. You can now log in.`;
+    statusEl.className = "status-success";
+
+    // Reset UI to show login form
+    document.getElementById("login-form").style.display = "block";
+    document.getElementById("verification-form").style.display = "none";
+
+    // Pre-populate username field for immediate login
+    document.getElementById("username").value = registeredUsername;
+    registeredUsername = null;
+  });
+}
+
+function resendCode() {
+  const statusEl = document.getElementById("auth-status");
+
+  if (!registeredUsername) {
+    statusEl.textContent = "Error: Please register again to resend a code.";
+    statusEl.className = "status-error";
+    return;
+  }
+
+  const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+    Username: registeredUsername,
+    Pool: userPool,
+  });
+
+  cognitoUser.resendConfirmationCode((err, result) => {
+    if (err) {
+      statusEl.textContent = `Resend Error: ${err.message}`;
+      statusEl.className = "status-error";
+      return;
+    }
+    statusEl.textContent = "New verification code sent! Check your email.";
     statusEl.className = "status-success";
   });
 }
@@ -444,6 +521,13 @@ function attachEventListeners() {
       .getElementById("register-user-btn")
       .addEventListener("click", registerUser);
     document.getElementById("login-btn").addEventListener("click", loginUser);
+
+    document
+      .getElementById("verify-user-btn")
+      .addEventListener("click", verifyUser);
+    document
+      .getElementById("resend-code-btn")
+      .addEventListener("click", resendCode);
   }
 
   if (document.getElementById("register-volunteer-btn")) {

@@ -77,6 +77,35 @@
           </button>
           <button id="login-btn" class="btn btn-primary">Log in</button>
         </div>
+
+        <div id="verification-form" style="display: none">
+          <p class="text-success text-center">
+            Verification code sent! Check your email.
+          </p>
+          <div class="mb-3">
+            <input
+              type="text"
+              id="verification-code"
+              class="form-control"
+              placeholder="6-digit Verification Code"
+              required
+              aria-label="Verification Code"
+            />
+          </div>
+          <div class="d-grid gap-2 mb-3">
+            <button
+              id="verify-user-btn"
+              class="btn btn-success"
+              aria-live="polite"
+            >
+              Verify Account
+            </button>
+            <button id="resend-code-btn" class="btn btn-link btn-sm">
+              Resend Code
+            </button>
+          </div>
+        </div>
+
         <p class="text-center small">
           Status:
           <span
