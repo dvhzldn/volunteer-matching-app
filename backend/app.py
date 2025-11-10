@@ -214,8 +214,9 @@ app.mount(
     GraphQL(executable_schema, debug=True, context_value=context_value_function),
 )
 
-# GraphQL route with custom context
-app.mount(
-    "/graphql",
-    GraphQL(executable_schema, debug=True, context_value=context_value_function),
-)
+
+def get_handler():
+    return Mangum(app, lifespan="off")
+
+
+handler = get_handler()

@@ -1,8 +1,8 @@
 // --- CONFIGURATION ---
 const API_URL =
-  "https://883ac4ind0.execute-api.eu-west-2.amazonaws.com/prod/graphql/";
-const USER_POOL_ID = "eu-west-2_hEMdRhBWT";
-const CLIENT_ID = "1hp6elsgk5gqcpjubbeliiv043";
+  "https://cmsssrftuh.execute-api.eu-west-2.amazonaws.com/prod/graphql/";
+const USER_POOL_ID = "eu-west-2_GwxX0anRK";
+const CLIENT_ID = "3t68sqm97nlh4b5baiks8q4r94";
 
 let globalIdToken = "";
 
