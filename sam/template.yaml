@@ -60,19 +60,9 @@ Resources:
     Properties:
       StageName: !Ref StageName
       Cors:
-        AllowOrigin: "*"
-        AllowHeaders:
-          - Content-Type
-          - X-Amz-Date
-          - Authorization
-          - X-Api-Key
-          - X-Amz-Security-Token
-        AllowMethods:
-          - GET
-          - POST
-          - OPTIONS
-          - PUT
-          - DELETE
+        AllowOrigin: "'*'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowMethods: "'GET,POST,OPTIONS,PUT,DELETE'"
         AllowCredentials: true
       Auth:
         DefaultAuthorizer: CognitoAuthorizer
