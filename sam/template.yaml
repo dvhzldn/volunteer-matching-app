@@ -128,7 +128,7 @@ Resources:
       FunctionName: !Sub "${AWS::StackName}-PostConfirm"
       Handler: post_confirm_lambda.handler
       Runtime: python3.11
-      CodeUri: ./
+      CodeUri: ../backend/
       Role: !GetAtt PostConfirmationFunctionRole.Arn
       Timeout: 10
       MemorySize: 256
