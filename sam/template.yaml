@@ -82,6 +82,7 @@ Resources:
         Variables:
           MATCHING_TABLE_NAME: !Ref MatchingTable
           STAGE: prod
+          CORS_FIX_VERSION: 1
       Policies:
         - AWSLambdaBasicExecutionRole
         - DynamoDBCrudPolicy:
