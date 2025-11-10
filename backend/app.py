@@ -194,8 +194,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# GraphQL route
-app.mount("/graphql", GraphQL(executable_schema, debug=True))
 
-# AWS handler
-handler = Mangum(app, lifespan="off")
+# Context injection function
+async def context_value_function(request):
+    """
+    Ensures AWS event and headers are available to resolvers.
+    """
+    aws_event = getattr(request, "scope", {}).get("aws.event", {})
+    return {
+        "request": request,
+        "aws_event": aws_event,
+        "headers": dict(request.headers),
+    }
+
+
+# GraphQL route with custom context
+app.mount(
+    "/graphql",
+    GraphQL(executable_schema, debug=True, context_value=context_value_function),
+)
+
+# GraphQL route with custom context
+app.mount(
+    "/graphql",
+    GraphQL(executable_schema, debug=True, context_value=context_value_function),
+)
