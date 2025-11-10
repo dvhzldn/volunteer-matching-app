@@ -58,7 +58,6 @@ Resources:
 
   VolunteerMatchingApi:
     Type: AWS::Serverless::Api
-    DependsOn: VolunteerUserPool
     Properties:
       StageName: !Ref StageName
       Cors:
