@@ -13,7 +13,6 @@ jobs:
       AWS_REGION: eu-west-2
       BUCKET_NAME: matching-deploy-${{ github.sha }}
       STACK_NAME: VolunteerMatchingApp-Dev
-      FRONTEND_BUCKET_NAME: volunteer-frontend-static
     steps:
       - uses: actions/checkout@v4
 
@@ -36,21 +35,6 @@ jobs:
         run: |
           echo "Creating deployment bucket $BUCKET_NAME..."
           aws s3 mb s3://$BUCKET_NAME --region $AWS_REGION || echo "Bucket already exists, continuing..."
-
-      - name: Create frontend bucket
-        run: |
-          aws s3 mb s3://$FRONTEND_BUCKET_NAME --region $AWS_REGION || echo "Frontend bucket exists"
-
-      - name: Disable S3 Block Public Access
-        run: |
-          aws s3api put-public-access-block \
-            --bucket $FRONTEND_BUCKET_NAME \
-            --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"
-
-      - name: Set frontend origin
-        run: |
-          FRONTEND_ORIGIN="http://$FRONTEND_BUCKET_NAME.s3-website.$AWS_REGION.amazonaws.com"
-          echo "FRONTEND_ORIGIN=$FRONTEND_ORIGIN" >> $GITHUB_ENV
 
       - name: SAM build
         id: build
@@ -80,7 +64,6 @@ jobs:
             --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
             --no-fail-on-empty-changeset \
             --region $AWS_REGION \
-            --parameter-overrides FrontendOrigin=$FRONTEND_ORIGIN
 
       - name: Cleanup failed CloudFormation stack (post-deploy)
         if: failure()
@@ -98,12 +81,22 @@ jobs:
         id: outputs
         run: |
           echo "Fetching SAM outputs..."
+          # Update to get the CloudFront URL and the actual bucket name from CloudFormation
           API_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='GraphQLApiEndpoint'].OutputValue" --output text)
           USER_POOL_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='VolunteerUserPoolId'].OutputValue" --output text)
           CLIENT_ID=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='VolunteerUserPoolClientId'].OutputValue" --output text)
+          FRONTEND_URL=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].Outputs[?OutputKey=='FrontendSiteUrl'].OutputValue" --output text)
+          # We need the S3 Bucket name for the s3 sync operation. It is not an output, so we must infer it from the template.
+          # Since the bucket name is defined as "volunteer-app-frontend-${AWS::AccountId}-${AWS::Region}" in the template,
+          # we need to execute a command to get the Account ID and Region (which is already in the environment).
+          ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+          FRONTEND_BUCKET_NAME="volunteer-app-frontend-${ACCOUNT_ID}-${{ env.AWS_REGION }}"
+
           echo "API_URL=$API_URL" >> $GITHUB_ENV
           echo "USER_POOL_ID=$USER_POOL_ID" >> $GITHUB_ENV
           echo "CLIENT_ID=$CLIENT_ID" >> $GITHUB_ENV
+          echo "FRONTEND_URL=$FRONTEND_URL" >> $GITHUB_ENV
+          echo "FRONTEND_BUCKET_NAME=$FRONTEND_BUCKET_NAME" >> $GITHUB_ENV
 
       - name: Generate script.js with injected values from template
         run: |
@@ -117,25 +110,13 @@ jobs:
       - name: Deploy frontend to S3
         run: |
           echo "Uploading frontend to S3..."
+          # Use the derived bucket name
           aws s3 sync frontend/ s3://$FRONTEND_BUCKET_NAME/ --delete
-          aws s3 website s3://$FRONTEND_BUCKET_NAME --index-document index.html --error-document index.html
+          # REMOVE website configuration command
 
-      - name: Set frontend bucket policy
+      - name: Display frontend URL
         run: |
-          POLICY='{
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Sid": "PublicReadGetObject",
-                "Effect": "Allow",
-                "Principal": "*",
-                "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::'"$FRONTEND_BUCKET_NAME"'/*"
-              }
-            ]
-          }'
-          echo "Applying public read policy to $FRONTEND_BUCKET_NAME..."
-          aws s3api put-bucket-policy --bucket $FRONTEND_BUCKET_NAME --policy "$POLICY"
+          echo "Dashboard URL: $FRONTEND_URL"
 
       - name: Cleanup deployment bucket
         if: always()

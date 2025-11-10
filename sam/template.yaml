@@ -11,9 +11,6 @@ Parameters:
   StageName:
     Type: String
     Default: prod
-  FrontendOrigin:
-    Type: String
-    Description: "Origin URL for the frontend (S3 website endpoint)"
 
 Resources:
   MatchingTable:
@@ -62,7 +59,7 @@ Resources:
     Properties:
       StageName: !Ref StageName
       Cors:
-        AllowOrigin: !Sub "'${FrontendOrigin}'"
+        AllowOrigin: !Sub "https://${VolunteerCloudFrontDistribution.DomainName}"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowMethods: "'GET,POST,OPTIONS,PUT,DELETE'"
         AllowCredentials: true
@@ -177,6 +174,72 @@ Resources:
         - ALLOW_REFRESH_TOKEN_AUTH
       GenerateSecret: false
 
+  FrontendSiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "volunteer-app-frontend-${AWS::AccountId}-${AWS::Region}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Project
+          Value: VolunteerMatchingApp
+
+  VolunteerOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: OAI for secure access to frontend S3 bucket
+
+  VolunteerSiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendSiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontAccess
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/origin-access-identity/${VolunteerOAI}"
+            Action: "s3:GetObject"
+            Resource: !Sub "${FrontendSiteBucket.Arn}/*"
+
+  VolunteerCloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Volunteer Matching App Frontend Distribution
+        DefaultRootObject: index.html
+        Aliases: []
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt FrontendSiteBucket.DomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Ref VolunteerOAI
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
 Outputs:
   GraphQLApiId:
     Value: !Ref VolunteerMatchingApi
@@ -196,3 +259,8 @@ Outputs:
     Export:
       Name: !Sub "${AWS::StackName}-UserPoolClientId"
     Description: "Cognito user pool client ID"
+  FrontendSiteUrl:
+    Description: "HTTPS URL for the static dashboard site"
+    Value: !Sub "https://${VolunteerCloudFrontDistribution.DomainName}"
+    Export:
+      Name: !Sub "${AWS::StackName}-FrontendSiteUrl"
