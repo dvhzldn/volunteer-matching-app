@@ -14,10 +14,6 @@ Parameters:
   FrontendOrigin:
     Type: String
     Description: "Origin URL for the frontend (S3 website endpoint)"
-  LambdaCodeBucket:
-    Type: String
-  LambdaCodeKey:
-    Type: String
 
 Resources:
   MatchingTable:
@@ -127,14 +123,12 @@ Resources:
                   - logs:PutLogEvents
                 Resource: !Sub "*"
   PostConfirmationFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-PostConfirm"
       Handler: post_confirm_lambda.handler
       Runtime: python3.11
-      Code:
-        S3Bucket: !Ref LambdaCodeBucket
-        S3Key: !Ref LambdaCodeKey
+      CodeUri: post_confirmation_lambda/
       Role: !GetAtt PostConfirmationFunctionRole.Arn
       Timeout: 10
       MemorySize: 256
