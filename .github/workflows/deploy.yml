@@ -41,6 +41,12 @@ jobs:
         run: |
           aws s3 mb s3://$FRONTEND_BUCKET_NAME --region $AWS_REGION || echo "Frontend bucket exists"
 
+      - name: Disable S3 Block Public Access
+        run: |
+          aws s3api put-public-access-block \
+            --bucket $FRONTEND_BUCKET_NAME \
+            --public-access-block-configuration "BlockPublicAcls=false,IgnorePublicAcls=false,BlockPublicPolicy=false,RestrictPublicBuckets=false"
+
       - name: Set frontend origin
         run: |
           FRONTEND_ORIGIN="http://$FRONTEND_BUCKET_NAME.s3-website.$AWS_REGION.amazonaws.com"
@@ -123,7 +129,7 @@ jobs:
                 "Effect": "Allow",
                 "Principal": "*",
                 "Action": "s3:GetObject",
-                "Resource": "arn:aws:s3:::'"$FRONTEND_BUCKET_NAME"'/*"
+                "Resource": "arn:aws:s3:::\"$FRONTEND_BUCKET_NAME\"/*"
               }
             ]
           }'
