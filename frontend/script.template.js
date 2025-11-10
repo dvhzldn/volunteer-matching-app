@@ -202,11 +202,12 @@ function loginUser() {
   if (!username || !password)
     return alert("Username and Password required for login.");
 
-  const authenticationDetails =
-    new AmazonCognitoIdentity.CognitoIdentity.AuthenticationDetails({
+  const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(
+    {
       Username: username,
       Password: password,
-    });
+    }
+  );
 
   const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
     Username: username,
