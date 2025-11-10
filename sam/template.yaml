@@ -115,7 +115,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - cognito-idp:AdminAddUserToGroup
-                Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+                Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${VolunteerUserPool}"
               - Effect: Allow
                 Action:
                   - logs:CreateLogGroup
@@ -128,7 +128,7 @@ Resources:
       FunctionName: !Sub "${AWS::StackName}-PostConfirm"
       Handler: post_confirm_lambda.handler
       Runtime: python3.11
-      CodeUri: ../backend/
+      CodeUri: backend/
       Role: !GetAtt PostConfirmationFunctionRole.Arn
       Timeout: 10
       MemorySize: 256
