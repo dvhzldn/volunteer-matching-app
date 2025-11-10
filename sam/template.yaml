@@ -61,7 +61,7 @@ Resources:
     Properties:
       StageName: !Ref StageName
       Cors:
-        AllowOrigin: !Ref FrontendOrigin
+        AllowOrigin: !Sub "'${FrontendOrigin}'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
         AllowMethods: "'GET,POST,OPTIONS,PUT,DELETE'"
         AllowCredentials: true
