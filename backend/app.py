@@ -59,31 +59,53 @@ def create_volunteer_item(
 
 def get_user_claims(info: Any) -> Optional[Dict[str, Any]]:
     """
-    Extract Cognito claims from Lambda/API Gateway context or directly from the Authorization header.
+    Extract Cognito claims from API Gateway event or Authorization header.
+    Works with both Mangum context shapes.
     """
     try:
-        scope = info.context["scope"]
-        aws_event = scope["aws.event"]
+        aws_event = (
+            info.context.get("aws_event")
+            or info.context.get("scope", {}).get("aws.event", {})
+            or {}
+        )
 
-        if "authorizer" in aws_event.get("requestContext", {}):
-            return aws_event["requestContext"]["authorizer"].get("claims")
+        request_ctx = aws_event.get("requestContext", {})
+        authorizer = request_ctx.get("authorizer", {})
 
-        headers = aws_event.get("headers", {})
-        auth_header = headers.get("authorization") or headers.get("Authorization")
+        if isinstance(authorizer, dict):
+            # REST API (v1)
+            if "claims" in authorizer:
+                return authorizer["claims"]
+            # HTTP API (v2)
+            if "jwt" in authorizer and isinstance(authorizer["jwt"], dict):
+                jwt_claims = authorizer["jwt"].get("claims")
+                if jwt_claims:
+                    return jwt_claims
 
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
+        headers = aws_event.get("headers", {}) or {}
+        auth_header = (
+            headers.get("authorization")
+            or headers.get("Authorization")
+            or headers.get("AUTHORIZATION")
+        )
+        if auth_header:
+            token = auth_header.split()[-1]
+            from jose import jwt
+
             claims = jwt.decode(
                 token,
                 key=None,
                 options={"verify_signature": False, "verify_aud": False},
             )
-            if claims.get("token_use") == "id":
+            if claims.get("token_use") in ("id", "access"):
                 return claims
+            return claims
 
+        # Nothing found
+        print("DEBUG: No claims or auth header found in event")
         return None
+
     except Exception as e:
-        # Log the error for debugging, but return None to fail authentication gracefully
         print(f"Error extracting claims: {e}")
         return None
 
