@@ -54,6 +54,7 @@ Resources:
           ProvisionedThroughput:
             ReadCapacityUnits: 1
             WriteCapacityUnits: 1
+    DeletionPolicy: Retain
 
   VolunteerMatchingApi:
     Type: AWS::Serverless::Api
