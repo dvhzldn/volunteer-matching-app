@@ -11,7 +11,7 @@ processes, improving resource allocation efficiency.
 
 ### Live Demo
 
-[https://d1mk4a8t69qmye.cloudfront.net/](d1mk4a8t69qmye.cloudfront.net/)
+[Link](https://d1mk4a8t69qmye.cloudfront.net/)
 
 **Note on Access**: Self-registration is currently **disabled** for this public
 demo to maintain the integrity and security of the AWS backend resources.
